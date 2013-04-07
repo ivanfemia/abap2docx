@@ -18,6 +18,9 @@
  <attribute CLSNAME="ZCL_WORD_WRITER" CMPNAME="C_WORD_WEBSETTINGS" VERSION="1" LANGU="E" DESCRIPT="wordWebSettings XML File Name" EXPOSURE="1" STATE="1" EDITORDER="8 " ATTDECLTYP="2" ATTVALUE="&apos;word/webSettings.xml&apos;" ATTEXPVIRT="0" TYPTYPE="1" TYPE="STRING" SRCROW1="0 " SRCCOLUMN1="0 " SRCROW2="0 " SRCCOLUMN2="0 " TYPESRC_LENG="0 "/>
  <inheritance CLSNAME="ZCL_WORD_WRITER" REFCLSNAME="ZCL_OOXML_WRITER" VERSION="1" STATE="1">
   <redefinition CLSNAME="ZCL_WORD_WRITER" REFCLSNAME="ZCL_OOXML_WRITER" VERSION="1" MTDNAME="CREATE" EXPOSURE="1"/>
+  <redefinition CLSNAME="ZCL_WORD_WRITER" REFCLSNAME="ZCL_OOXML_WRITER" VERSION="1" MTDNAME="CREATE_CONTENT_TYPES" EXPOSURE="1"/>
+  <redefinition CLSNAME="ZCL_WORD_WRITER" REFCLSNAME="ZCL_OOXML_WRITER" VERSION="1" MTDNAME="CREATE_DOCPROPS_APP" EXPOSURE="1"/>
+  <redefinition CLSNAME="ZCL_WORD_WRITER" REFCLSNAME="ZCL_OOXML_WRITER" VERSION="1" MTDNAME="CREATE_RELATIONSHIPS" EXPOSURE="1"/>
  </inheritance>
  <method CLSNAME="ZCL_OOXML_WRITER" CMPNAME="CREATE" VERSION="0" EXPOSURE="0" STATE="0" EDITORDER="0 " DISPID="0 " MTDTYPE="0" MTDDECLTYP="0" BCMTDCAT="00" BCMTDSYN="0">
   <source>METHOD create.
@@ -83,6 +86,341 @@
   ep_ooxml_document = lo_zip-&gt;save( ).
 
 ENDMETHOD.</source>
+ </method>
+ <method CLSNAME="ZCL_OOXML_WRITER" CMPNAME="CREATE_CONTENT_TYPES" VERSION="0" EXPOSURE="0" STATE="0" EDITORDER="0 " DISPID="0 " MTDTYPE="0" MTDDECLTYP="0" BCMTDCAT="00" BCMTDSYN="0">
+  <source>method CREATE_CONTENT_TYPES.
+
+  DATA: lc_xml_node_override        TYPE string VALUE &apos;Override&apos;,
+        &quot; Node attributes
+        lc_xml_attr_partname        TYPE string VALUE &apos;PartName&apos;,
+        lc_xml_attr_contenttype     TYPE string VALUE &apos;ContentType&apos;,
+        &quot; Node partnumber
+        lc_xml_node_document_pn     TYPE string VALUE &apos;/word/document.xml&apos;,
+        lc_xml_node_styles_pn       TYPE string VALUE &apos;/word/styles.xml&apos;,
+        lc_xml_node_stylesweff_pn   TYPE string VALUE &apos;/word/stylesWithEffects.xml&apos;,
+        lc_xml_node_settings_pn     TYPE string VALUE &apos;/word/settings.xml&apos;,
+        lc_xml_node_webSettings_pn  TYPE string VALUE &apos;/word/webSettings.xml&apos;,
+        lc_xml_node_fonttable_pn    TYPE string VALUE &apos;/word/fontTable.xml&apos;,
+        lc_xml_node_theme_pn        TYPE string VALUE &apos;/word/theme/theme1.xml&apos;,
+        lc_xml_node_core_pn         TYPE string VALUE &apos;/docProps/core.xml&apos;,
+        lc_xml_node_app_pn          TYPE string VALUE &apos;/docProps/app.xml&apos;,
+        &quot; Node contentType
+        lc_xml_node_document_ct     TYPE string VALUE &apos;application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml&apos;,
+        lc_xml_node_styles_ct       TYPE string VALUE &apos;application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml&apos;,
+        lc_xml_node_stylesweff_ct   TYPE string VALUE &apos;application/vnd.ms-word.stylesWithEffects+xml&apos;,
+        lc_xml_node_settings_ct     TYPE string VALUE &apos;application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml&apos;,
+        lc_xml_node_webSettings_ct  TYPE string VALUE &apos;application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml&apos;,
+        lc_xml_node_fonttable_ct    TYPE string VALUE &apos;application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml&apos;,
+        lc_xml_node_theme_ct        TYPE string VALUE &apos;application/vnd.openxmlformats-officedocument.theme+xml&apos;,
+        lc_xml_node_core_ct         TYPE string VALUE &apos;application/vnd.openxmlformats-package.core-properties+xml&apos;,
+        lc_xml_node_app_ct          TYPE string VALUE &apos;application/vnd.openxmlformats-officedocument.extended-properties+xml&apos;.
+
+  DATA: lo_word           TYPE REF TO zcl_word,
+        lo_ixml           TYPE REF TO if_ixml,
+        lo_document       TYPE REF TO if_ixml_document,
+        lo_document_xml   TYPE REF TO cl_xml_document,
+        lo_element_root   TYPE REF TO if_ixml_node,
+        lo_element        TYPE REF TO if_ixml_element,
+        lo_node           TYPE REF TO if_ixml_node,
+        lo_encoding       TYPE REF TO if_ixml_encoding,
+        lo_streamfactory  TYPE REF TO if_ixml_stream_factory,
+        lo_ostream        TYPE REF TO if_ixml_ostream,
+        lo_renderer       TYPE REF TO if_ixml_renderer.
+
+  DATA: lv_subrc          TYPE sysubrc,
+        lv_value          TYPE string.
+
+  lo_word ?= me-&gt;ooxml_doc.
+
+**********************************************************************
+* STEP 1: Create standard relationship
+  ep_content = super-&gt;CREATE_CONTENT_TYPES( ).
+
+**********************************************************************
+* STEP 2: modify XML adding Word specific attributes
+
+  CREATE OBJECT lo_document_xml.
+  lv_subrc = lo_document_xml-&gt;parse_xstring( ep_content ).
+
+  lo_document ?= lo_document_xml-&gt;m_document.
+  lo_element_root = lo_document-&gt;if_ixml_node~get_first_child( ).
+
+  &quot; Document node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_override
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_partname
+                                value = lc_xml_node_document_pn ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_contenttype
+                                value = lc_xml_node_document_ct ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Styles node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_override
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_partname
+                                value = lc_xml_node_styles_pn ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_contenttype
+                                value = lc_xml_node_styles_ct ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Styles with effects node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_override
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_partname
+                                value = lc_xml_node_stylesweff_pn ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_contenttype
+                                value = lc_xml_node_stylesweff_ct ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Settings node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_override
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_partname
+                                value = lc_xml_node_settings_pn ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_contenttype
+                                value = lc_xml_node_settings_ct ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Web settings node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_override
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_partname
+                                value = lc_xml_node_webSettings_pn ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_contenttype
+                                value = lc_xml_node_webSettings_ct ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Font Table node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_override
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_partname
+                                value = lc_xml_node_fonttable_pn ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_contenttype
+                                value = lc_xml_node_fonttable_ct ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Theme node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_override
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_partname
+                                value = lc_xml_node_theme_pn ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_contenttype
+                                value = lc_xml_node_theme_ct ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Core node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_override
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_partname
+                                value = lc_xml_node_core_pn ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_contenttype
+                                value = lc_xml_node_core_ct ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; App node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_override
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_partname
+                                value = lc_xml_node_app_pn ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_contenttype
+                                value = lc_xml_node_app_ct ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+
+**********************************************************************
+* STEP x: Create xstring stream
+  CLEAR ep_content.
+  lo_ixml = cl_ixml=&gt;create( ).
+  lo_streamfactory = lo_ixml-&gt;create_stream_factory( ).
+  lo_ostream = lo_streamfactory-&gt;create_ostream_xstring( string = ep_content ).
+  lo_renderer = lo_ixml-&gt;create_renderer( ostream  = lo_ostream document = lo_document ).
+  lo_renderer-&gt;render( ).
+
+endmethod.</source>
+ </method>
+ <method CLSNAME="ZCL_OOXML_WRITER" CMPNAME="CREATE_DOCPROPS_APP" VERSION="0" EXPOSURE="0" STATE="0" EDITORDER="0 " DISPID="0 " MTDTYPE="0" MTDDECLTYP="0" BCMTDCAT="00" BCMTDSYN="0">
+  <source>METHOD create_docprops_app.
+
+  DATA: lc_xml_node_characters        TYPE string VALUE &apos;Characters&apos;,
+        lc_xml_node_charactersspaces  TYPE string VALUE &apos;CharactersWithSpaces&apos;,
+        lc_xml_node_lines             TYPE string VALUE &apos;Lines&apos;,
+        lc_xml_node_pages             TYPE string VALUE &apos;Pages&apos;,
+        lc_xml_node_paragraphs        TYPE string VALUE &apos;Paragraphs&apos;,
+        lc_xml_node_template          TYPE string VALUE &apos;Template&apos;,
+        lc_xml_node_totaltime         TYPE string VALUE &apos;TotalTime&apos;,
+        lc_xml_node_words             TYPE string VALUE &apos;Words&apos;.
+
+  DATA: lo_word           TYPE REF TO zcl_word,
+        lo_ixml           TYPE REF TO if_ixml,
+        lo_document       TYPE REF TO if_ixml_document,
+        lo_document_xml   TYPE REF TO cl_xml_document,
+        lo_element_root   TYPE REF TO if_ixml_node,
+        lo_element        TYPE REF TO if_ixml_element,
+        lo_node           TYPE REF TO if_ixml_node,
+        lo_encoding       TYPE REF TO if_ixml_encoding,
+        lo_streamfactory  TYPE REF TO if_ixml_stream_factory,
+        lo_ostream        TYPE REF TO if_ixml_ostream,
+        lo_renderer       TYPE REF TO if_ixml_renderer.
+
+  DATA: lv_subrc          TYPE sysubrc,
+        lv_value          TYPE string.
+
+  lo_word ?= me-&gt;ooxml_doc.
+
+**********************************************************************
+* STEP 1: Create standard relationship
+  ep_content = super-&gt;create_docprops_app( ).
+
+**********************************************************************
+* STEP 2: modify XML adding Word specific attributes
+
+  CREATE OBJECT lo_document_xml.
+  lv_subrc = lo_document_xml-&gt;parse_xstring( ep_content ).
+
+  lo_document ?= lo_document_xml-&gt;m_document.
+  lo_element_root = lo_document-&gt;if_ixml_node~get_first_child( ).
+
+  &quot; Characters
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_characters
+                                                   parent = lo_document ).
+  lv_value = lo_word-&gt;zif_word_book_properties~characters.
+  CONDENSE lv_value.
+  lo_element-&gt;set_value( value = lv_value ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; CharactersWithSpaces
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_charactersspaces
+                                                   parent = lo_document ).
+  lv_value = lo_word-&gt;zif_word_book_properties~characterswithspaces.
+  CONDENSE lv_value.
+  lo_element-&gt;set_value( value = lv_value ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Lines
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_lines
+                                                   parent = lo_document ).
+  lv_value = lo_word-&gt;zif_word_book_properties~lines.
+  CONDENSE lv_value.
+  lo_element-&gt;set_value( value = lv_value ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Pages
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_pages
+                                                   parent = lo_document ).
+  lv_value = lo_word-&gt;zif_word_book_properties~pages.
+  CONDENSE lv_value.
+  lo_element-&gt;set_value( value = lv_value ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Paragraphs
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_paragraphs
+                                                   parent = lo_document ).
+  lv_value = lo_word-&gt;zif_word_book_properties~paragraphs.
+  CONDENSE lv_value.
+  lo_element-&gt;set_value( value = lv_value ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Template
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_template
+                                                   parent = lo_document ).
+  lv_value = lo_word-&gt;zif_word_book_properties~template.
+  lo_element-&gt;set_value( value = lv_value ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; TotalTime
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_totaltime
+                                                   parent = lo_document ).
+  lv_value = lo_word-&gt;zif_word_book_properties~totaltime.
+  CONDENSE lv_value.
+  lo_element-&gt;set_value( value = lv_value ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+  &quot; Words
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_words
+                                                   parent = lo_document ).
+  lv_value = lo_word-&gt;zif_word_book_properties~words.
+  CONDENSE lv_value.
+  lo_element-&gt;set_value( value = lv_value ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+**********************************************************************
+* STEP x: Create xstring stream
+  CLEAR ep_content.
+  lo_ixml = cl_ixml=&gt;create( ).
+  lo_streamfactory = lo_ixml-&gt;create_stream_factory( ).
+  lo_ostream = lo_streamfactory-&gt;create_ostream_xstring( string = ep_content ).
+  lo_renderer = lo_ixml-&gt;create_renderer( ostream  = lo_ostream document = lo_document ).
+  lo_renderer-&gt;render( ).
+
+ENDMETHOD.</source>
+ </method>
+ <method CLSNAME="ZCL_OOXML_WRITER" CMPNAME="CREATE_RELATIONSHIPS" VERSION="0" EXPOSURE="0" STATE="0" EDITORDER="0 " DISPID="0 " MTDTYPE="0" MTDDECLTYP="0" BCMTDCAT="00" BCMTDSYN="0">
+  <source>method CREATE_RELATIONSHIPS.
+
+  DATA: lc_xml_node_relationship  TYPE string VALUE &apos;Relationship&apos;,
+        &quot; Node attributes
+        lc_xml_attr_id            TYPE string VALUE &apos;Id&apos;,
+        lc_xml_attr_type          TYPE string VALUE &apos;Type&apos;,
+        lc_xml_attr_target        TYPE string VALUE &apos;Target&apos;,
+        &quot; Node id
+        lc_xml_node_rId1_id       TYPE string VALUE &apos;rId1&apos;,
+        &quot; Node type
+        lc_xml_node_rId1_tp       TYPE string VALUE &apos;http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument&apos;,
+        &quot; Node target
+        lc_xml_node_rId1_tg       TYPE string VALUE &apos;word/document.xml&apos;.
+
+  DATA: lo_word           TYPE REF TO zcl_word,
+        lo_ixml           TYPE REF TO if_ixml,
+        lo_document       TYPE REF TO if_ixml_document,
+        lo_document_xml   TYPE REF TO cl_xml_document,
+        lo_element_root   TYPE REF TO if_ixml_node,
+        lo_element        TYPE REF TO if_ixml_element,
+        lo_node           TYPE REF TO if_ixml_node,
+        lo_encoding       TYPE REF TO if_ixml_encoding,
+        lo_streamfactory  TYPE REF TO if_ixml_stream_factory,
+        lo_ostream        TYPE REF TO if_ixml_ostream,
+        lo_renderer       TYPE REF TO if_ixml_renderer.
+
+  DATA: lv_subrc          TYPE sysubrc,
+        lv_value          TYPE string.
+
+  lo_word ?= me-&gt;ooxml_doc.
+
+**********************************************************************
+* STEP 1: Create standard relationship
+  ep_content = super-&gt;CREATE_RELATIONSHIPS( ).
+
+**********************************************************************
+* STEP 2: modify XML adding Word specific attributes
+
+  CREATE OBJECT lo_document_xml.
+  lv_subrc = lo_document_xml-&gt;parse_xstring( ep_content ).
+
+  lo_document ?= lo_document_xml-&gt;m_document.
+  lo_element_root = lo_document-&gt;if_ixml_node~get_first_child( ).
+
+  &quot; rels node
+  lo_element = lo_document-&gt;create_simple_element( name   = lc_xml_node_relationship
+                                                   parent = lo_document ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_id
+                                value = lc_xml_node_rId1_id ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_type
+                                value = lc_xml_node_rId1_tp ).
+  lo_element-&gt;set_attribute_ns( name  = lc_xml_attr_target
+                                value = lc_xml_node_rId1_tg ).
+  lo_element_root-&gt;append_child( new_child = lo_element ).
+
+**********************************************************************
+* STEP 3: Create xstring stream
+  lo_streamfactory = lo_ixml-&gt;create_stream_factory( ).
+  lo_ostream = lo_streamfactory-&gt;create_ostream_xstring( string = ep_content ).
+  lo_renderer = lo_ixml-&gt;create_renderer( ostream  = lo_ostream document = lo_document ).
+  lo_renderer-&gt;render( ).
+
+
+
+
+endmethod.</source>
  </method>
  <method CLSNAME="ZCL_WORD_WRITER" CMPNAME="CREATE_WORD_DOCUMENT" VERSION="1" LANGU="E" DESCRIPT="Create &apos;word/document.xml&apos;" EXPOSURE="1" STATE="1" EDITORDER="1 " DISPID="0 " MTDTYPE="0" MTDDECLTYP="0" BCMTDCAT="00" BCMTDSYN="0">
   <parameter CLSNAME="ZCL_WORD_WRITER" CMPNAME="CREATE_WORD_DOCUMENT" SCONAME="EP_CONTENT" VERSION="1" LANGU="E" CMPTYPE="1" MTDTYPE="0" EDITORDER="1 " DISPID="0 " PARDECLTYP="3" PARPASSTYP="0" TYPTYPE="1" TYPE="XSTRING"/>
