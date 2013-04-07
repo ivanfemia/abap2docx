@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PROG NAME="ZDOCX_ZAKE_SVN" VARCL="X" SUBC="1" RSTAT="T" RMAND="000" RLOAD="E" FIXPT="X" UCCHECK="X">
+ <textPool>
+  <language SPRAS="E">
+   <textElement ID="R" ENTRY="Checkout / Checkin the abap2docx Project" LENGTH="40 "/>
+  </language>
+ </textPool>
+ <source>*&amp;---------------------------------------------------------------------*
+*&amp; Report ZDOCX_ZAKE_SVN
+*&amp;
+*&amp;---------------------------------------------------------------------*
+*&amp; Checkout / Checkin the abap2docx Project
+*&amp;
+*&amp;---------------------------------------------------------------------*
+
+REPORT zdocx_zake_svn.
+
+CONSTANTS cl_svn TYPE seoclsname VALUE &apos;ZCL_ZAKE_SVN&apos;.
+CONSTANTS cl_tortoise_svn TYPE seoclsname VALUE &apos;ZCL_ZAKE_TORTOISE_SVN&apos;.
+
+DATA zake    TYPE REF TO zake.
+DATA package_obj_name TYPE sobj_name.
+
+DATA objects TYPE scts_tadir.
+DATA object  LIKE LINE OF objects.
+
+DATA files TYPE string_table.
+DATA file  LIKE LINE OF files.
+
+DATA zake_build                TYPE string.
+DATA zake_nuggetname           TYPE string.
+
+DATA comment_str               TYPE string.
+DATA loclpath_str              TYPE string.
+DATA svnpath_str               TYPE string.
+DATA username_str              TYPE string.
+DATA password_str              TYPE string.
+DATA class                     TYPE seoclsname.
+
+DATA: ex TYPE REF TO zcx_saplink,
+      message TYPE string.
+
+SELECTION-SCREEN BEGIN OF BLOCK a WITH FRAME TITLE a.
+PARAMETERS:
+  checkout TYPE flag RADIOBUTTON GROUP act,
+  update   TYPE flag RADIOBUTTON GROUP act DEFAULT &apos;X&apos;,
+  install  TYPE flag RADIOBUTTON GROUP act,
+  export   TYPE flag RADIOBUTTON GROUP act,
+  build    TYPE flag RADIOBUTTON GROUP act,
+  checkin  TYPE flag RADIOBUTTON GROUP act.
+SELECTION-SCREEN END OF BLOCK a.
+
+SELECTION-SCREEN BEGIN OF BLOCK b WITH FRAME TITLE b.
+PARAMETERS:
+  svn      TYPE flag RADIOBUTTON GROUP cl,
+  tortoise TYPE flag RADIOBUTTON GROUP cl.
+SELECTION-SCREEN END OF BLOCK b.
+
+SELECTION-SCREEN BEGIN OF BLOCK c WITH FRAME TITLE c.
+PARAMETERS:
+  loclpath TYPE char512 DEFAULT &apos;C:\Projects\abap2docx\trunk&apos; LOWER CASE OBLIGATORY,
+  zakenugg TYPE char512 DEFAULT &apos;C:\Projects\abap2docx\build\abap2docx_Daily.nugg&apos; LOWER CASE OBLIGATORY,
+  svnpath  TYPE char512 DEFAULT &apos;https://code.sdn.sap.com/svn/abap2docx&apos; LOWER CASE OBLIGATORY,
+  package  TYPE devclass DEFAULT &apos;ZABAP2DOCX&apos;,
+  comment  TYPE char512 DEFAULT &apos;&apos; LOWER CASE,
+  username TYPE char512 LOWER CASE,
+  password TYPE char512 LOWER CASE,
+  setpack  TYPE flag    DEFAULT &apos;X&apos;,
+  testrun  TYPE flag    DEFAULT &apos;X&apos;.
+SELECTION-SCREEN END OF BLOCK c.
+
+INITIALIZATION.
+  a = &apos;Action&apos;.
+  b = &apos;Version Controll Program&apos;.
+  c = &apos;Parameters&apos;.
+
+START-OF-SELECTION.
+
+  svnpath_str               = svnpath.
+  loclpath_str              = loclpath.
+  zake_nuggetname           = zakenugg.
+  comment_str               = comment.
+
+  &quot; SELECT * INTO TABLE objects FROM tadir WHERE devclass = &apos;ZABAP2XLSX&apos;.
+  &quot; DELETE zake_objects WHERE object = &apos;DEVC&apos;.
+
+  TRY.
+      IF svn = &apos;X&apos;.
+        class = cl_svn.
+      ELSE.
+        class = cl_tortoise_svn.
+      ENDIF.
+
+      CREATE OBJECT zake
+        TYPE
+        (class)
+        EXPORTING
+          i_svnpath   = svnpath_str
+          i_localpath = loclpath_str.
+      zake-&gt;set_testrun( testrun ).
+      zake-&gt;set_package( package ).
+
+      IF checkout = &apos;X&apos;.
+        zake-&gt;checkout( ).
+      ELSEIF update = &apos;X&apos;.
+        zake-&gt;update( ).
+      ELSEIF install = &apos;X&apos;.
+        zake-&gt;install_slinkees_from_lm( testrun ).
+        IF setpack = abap_true.
+          zake-&gt;set_package_of_package_objects( ).
+        ENDIF.
+        &quot; zake-&gt;install_objects( zake_objects ).
+      ELSEIF export = &apos;X&apos;.
+        &quot; Build Object list for Export
+        &quot; Programs
+*        object-object   = &apos;PROG&apos;.
+*        object-obj_name = &apos;ZDOCX_ZAKE_SVN&apos;.
+*        APPEND object TO objects.
+*        zake-&gt;set_checkin_objects( objects ).
+        zake-&gt;set_package_objects( i_package = package ).
+        package_obj_name = package.
+        zake-&gt;unset_checkin_object_by_name(
+          EXPORTING
+            i_object      = &apos;DEVC&apos;      &quot; Object Type
+            i_object_name = package_obj_name &quot; Object Name in Object Directory
+        ).
+        zake-&gt;download_slinkees_to_lm = abap_true.
+        zake-&gt;download_nugget_to_lm   = space.
+        zake-&gt;download_zip_to_lm_flag = space.
+        zake-&gt;create_slinkees( zake_nuggetname ).
+      ELSEIF build = &apos;X&apos;.
+        &quot; Build a complete package for download
+        zake-&gt;set_checkin_objects( objects ).
+        &quot; We don&apos;t want that for the complete Package Slinkees are created
+        &quot; in the ZAKE folder
+        zake-&gt;download_slinkees_to_lm = space.
+        zake-&gt;download_nugget_to_lm   = space.
+        zake-&gt;create_slinkees( zake_nuggetname ).
+      ELSEIF checkin = &apos;X&apos;.
+        zake-&gt;set_package( package ).
+        zake-&gt;set_checkin_objects( objects ).
+        zake-&gt;create_slinkees( zake_nuggetname ).
+        IF testrun IS INITIAL.
+          zake-&gt;checkin( comment_str ).
+        ENDIF.
+      ENDIF.
+    CATCH zcx_saplink INTO ex.
+      message = ex-&gt;msg.
+      WRITE: / &apos;An Error occured: &apos;, message.
+  ENDTRY.</source>
+</PROG>
