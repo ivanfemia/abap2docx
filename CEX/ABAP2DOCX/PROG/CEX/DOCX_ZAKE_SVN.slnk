@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PROG NAME="ZDOCX_ZAKE_SVN" VARCL="X" SUBC="1" RSTAT="T" RMAND="000" RLOAD="E" FIXPT="X" UCCHECK="X">
+<PROG NAME="/CEX/DOCX_ZAKE_SVN" VARCL="X" SUBC="1" RSTAT="T" RMAND="000" RLOAD="E" FIXPT="X" UCCHECK="X">
  <textPool>
   <language SPRAS="E">
    <textElement ID="R" ENTRY="Checkout / Checkin the abap2docx Project" LENGTH="40 "/>
@@ -13,7 +13,7 @@
 *&amp;
 *&amp;---------------------------------------------------------------------*
 
-REPORT zdocx_zake_svn.
+REPORT /cex/docx_zake_svn.
 
 CONSTANTS cl_svn TYPE seoclsname VALUE &apos;ZCL_ZAKE_SVN&apos;.
 CONSTANTS cl_tortoise_svn TYPE seoclsname VALUE &apos;ZCL_ZAKE_TORTOISE_SVN&apos;.
@@ -58,10 +58,10 @@ SELECTION-SCREEN END OF BLOCK b.
 
 SELECTION-SCREEN BEGIN OF BLOCK c WITH FRAME TITLE c.
 PARAMETERS:
-  loclpath TYPE char512 DEFAULT &apos;C:\Projects\abap2docx\trunk&apos; LOWER CASE OBLIGATORY,
-  zakenugg TYPE char512 DEFAULT &apos;C:\Projects\abap2docx\build\abap2docx_Daily.nugg&apos; LOWER CASE OBLIGATORY,
+  loclpath TYPE char512 DEFAULT &apos;Z:\CodExch\abap2docx\trunk&apos; LOWER CASE OBLIGATORY,
+  zakenugg TYPE char512 DEFAULT &apos;Z:\CodExch\abap2docx\build\abap2docx_Daily.nugg&apos; LOWER CASE OBLIGATORY,
   svnpath  TYPE char512 DEFAULT &apos;https://code.sdn.sap.com/svn/abap2docx&apos; LOWER CASE OBLIGATORY,
-  package  TYPE devclass DEFAULT &apos;ZABAP2DOCX&apos;,
+  package  TYPE devclass DEFAULT &apos;/CEX/ABAP2DOCX&apos;,
   comment  TYPE char512 DEFAULT &apos;&apos; LOWER CASE,
   username TYPE char512 LOWER CASE,
   password TYPE char512 LOWER CASE,
@@ -81,8 +81,8 @@ START-OF-SELECTION.
   zake_nuggetname           = zakenugg.
   comment_str               = comment.
 
-  &quot; SELECT * INTO TABLE objects FROM tadir WHERE devclass = &apos;ZABAP2XLSX&apos;.
-  &quot; DELETE zake_objects WHERE object = &apos;DEVC&apos;.
+  SELECT * INTO TABLE objects FROM tadir WHERE devclass = package.
+  DELETE objects WHERE object = &apos;DEVC&apos;.
 
   TRY.
       IF svn = &apos;X&apos;.

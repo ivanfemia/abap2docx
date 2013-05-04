@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PROG NAME="/CEX/DEMO_WORD1" VARCL="X" SUBC="1" RMAND="100" RLOAD="E" FIXPT="X" UCCHECK="X">
+ <textPool>
+  <language SPRAS="E">
+   <textElement ID="R" ENTRY="Program ZABAP2DOCXTEST" LENGTH="22 "/>
+  </language>
+ </textPool>
+ <source>*&amp;---------------------------------------------------------------------*
+*&amp; Report  ZABAP2DOCXTEST
+*&amp;
+*&amp;---------------------------------------------------------------------*
+*&amp;
+*&amp;
+*&amp;---------------------------------------------------------------------*
+
+REPORT  /cex/demo_word1.
+
+DATA lo_word TYPE REF TO /cex/cl_word.
+DATA lo_writer TYPE REF TO /cex/cl_word_writer.
+DATA lv_file TYPE xstring.
+
+CONSTANTS: gc_save_file_name TYPE string VALUE &apos;01_HelloWorld.docx&apos;.
+INCLUDE /cex/demo_excel_outputopt_incl.
+
+START-OF-SELECTION.
+  CREATE OBJECT lo_word.
+
+*data lo_paragraph type zcl_paragraph.
+*data lv_text type string.
+*lo_paragraph = lo_word-&gt;add_paragraph( ).
+*lo_word-&gt;add_text( ip_paragraph = lo_paragraph ip_text = lv_text ).
+*lo_paragraph = lo_word-&gt;add_paragraph( ).
+*lo_word-&gt;add_text( ip_paragraph = lo_paragraph ip_text = lv_text ).
+
+
+  CREATE OBJECT lo_writer.
+  lv_file = lo_writer-&gt;write_file( lo_word ).
+
+*** Create output
+  lcl_output=&gt;output( lv_file ).</source>
+</PROG>
