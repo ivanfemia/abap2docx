@@ -426,19 +426,68 @@ ENDMETHOD.</source>
  </method>
  <method CLSNAME="/CEX/CL_WORD_WRITER" CMPNAME="CREATE_WORD_DOCUMENT" VERSION="1" LANGU="E" DESCRIPT="Create &apos;word/document.xml&apos;" EXPOSURE="1" STATE="1" EDITORDER="1 " DISPID="0 " MTDTYPE="0" MTDDECLTYP="0" BCMTDCAT="00" BCMTDSYN="0">
   <parameter CLSNAME="/CEX/CL_WORD_WRITER" CMPNAME="CREATE_WORD_DOCUMENT" SCONAME="EP_CONTENT" VERSION="1" LANGU="E" CMPTYPE="1" MTDTYPE="0" EDITORDER="1 " DISPID="0 " PARDECLTYP="3" PARPASSTYP="0" TYPTYPE="1" TYPE="XSTRING"/>
-  <source>method CREATE_WORD_DOCUMENT.
+  <source>METHOD create_word_document.
 
-  DATA: lo_word           TYPE REF TO /cex/cl_word,
-        lo_ixml           TYPE REF TO if_ixml,
-        lo_document       TYPE REF TO if_ixml_document,
-        lo_document_xml   TYPE REF TO cl_xml_document,
-        lo_element_root   TYPE REF TO if_ixml_node,
-        lo_element        TYPE REF TO if_ixml_element,
-        lo_node           TYPE REF TO if_ixml_node,
-        lo_encoding       TYPE REF TO if_ixml_encoding,
-        lo_streamfactory  TYPE REF TO if_ixml_stream_factory,
-        lo_ostream        TYPE REF TO if_ixml_ostream,
-        lo_renderer       TYPE REF TO if_ixml_renderer.
+
+  DATA: lo_word             TYPE REF TO /cex/cl_word,
+        lo_ixml             TYPE REF TO if_ixml,
+        lo_document         TYPE REF TO if_ixml_document,
+        lo_element_root     TYPE REF TO if_ixml_element,
+        lo_element_body     TYPE REF TO if_ixml_element,
+        lo_element_p        TYPE REF TO if_ixml_element,
+        lo_element_sectpr   TYPE REF TO if_ixml_element,
+        lo_element_pgsz     TYPE REF TO if_ixml_element,
+        lo_element_pgmar    TYPE REF TO if_ixml_element,
+        lo_element_cols     TYPE REF TO if_ixml_element,
+        lo_element_docgrid  TYPE REF TO if_ixml_element,
+        lo_encoding         TYPE REF TO if_ixml_encoding,
+        lo_streamfactory    TYPE REF TO if_ixml_stream_factory,
+        lo_ostream          TYPE REF TO if_ixml_ostream,
+        lo_renderer         TYPE REF TO if_ixml_renderer.
+
+  DATA: lc_xml_node_document  TYPE string VALUE &apos;document&apos;,
+        lc_xml_node_body      TYPE string VALUE &apos;body&apos;,
+        lc_xml_node_p         TYPE string VALUE &apos;p&apos;,
+        lc_xml_node_sectpr    TYPE string VALUE &apos;sectPr&apos;,
+        lc_xml_node_pgsz      TYPE string VALUE &apos;pgSz&apos;,
+        lc_xml_node_pgmar     TYPE string VALUE &apos;pgMar&apos;,
+        lc_xml_node_cols      TYPE string VALUE &apos;cols&apos;,
+        lc_xml_node_docgrid   TYPE string VALUE &apos;docGrid&apos;,
+        &quot; Node attributes
+        lc_xml_attr_rsidr         TYPE string VALUE &apos;rsidR&apos;,
+        lc_xml_attr_rsidrdefault  TYPE string VALUE &apos;rsidRDefault&apos;,
+        lc_xml_attr_rsidsect      TYPE string VALUE &apos;rsidSect&apos;,
+        lc_xml_attr_w             TYPE string VALUE &apos;w&apos;,
+        lc_xml_attr_h             TYPE string VALUE &apos;h&apos;,
+        lc_xml_attr_top           TYPE string VALUE &apos;top&apos;,
+        lc_xml_attr_right         TYPE string VALUE &apos;right&apos;,
+        lc_xml_attr_bottom        TYPE string VALUE &apos;bottom&apos;,
+        lc_xml_attr_left          TYPE string VALUE &apos;left&apos;,
+        lc_xml_attr_header        TYPE string VALUE &apos;header&apos;,
+        lc_xml_attr_footer        TYPE string VALUE &apos;footer&apos;,
+        lc_xml_attr_gutter        TYPE string VALUE &apos;gutter&apos;,
+        lc_xml_attr_space         TYPE string VALUE &apos;space&apos;,
+        lc_xml_attr_linepitch     TYPE string VALUE &apos;linePitch&apos;,
+        &quot; Namespace prefix
+        lc_ve_ns              TYPE string VALUE &apos;ve&apos;,
+        lc_o_ns               TYPE string VALUE &apos;o&apos;,
+        lc_r_ns               TYPE string VALUE &apos;r&apos;,
+        lc_m_ns               TYPE string VALUE &apos;m&apos;,
+        lc_v_ns               TYPE string VALUE &apos;v&apos;,
+        lc_wp_ns              TYPE string VALUE &apos;wp&apos;,
+        lc_w10_ns             TYPE string VALUE &apos;w10&apos;,
+        lc_w_ns               TYPE string VALUE &apos;w&apos;,
+        lc_wne_ns             TYPE string VALUE &apos;wne&apos;,
+        &quot; Node namespace
+        lc_xml_node_ve_ns     TYPE string VALUE &apos;http://schemas.openxmlformats.org/markup-compatibility/2006&apos;,
+        lc_xml_node_o_ns      TYPE string VALUE &apos;urn:schemas-microsoft-com:office:office&apos;,
+        lc_xml_node_r_ns      TYPE string VALUE &apos;http://schemas.openxmlformats.org/officeDocument/2006/relationships&apos;,
+        lc_xml_node_m_ns      TYPE string VALUE &apos;http://schemas.openxmlformats.org/officeDocument/2006/math&apos;,
+        lc_xml_node_v_ns      TYPE string VALUE &apos;urn:schemas-microsoft-com:vml&apos;,
+        lc_xml_node_wp_ns     TYPE string VALUE &apos;http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing&apos;,
+        lc_xml_node_w10_ns    TYPE string VALUE &apos;urn:schemas-microsoft-com:office:word&apos;,
+        lc_xml_node_w_ns      TYPE string VALUE &apos;http://schemas.openxmlformats.org/wordprocessingml/2006/main&apos;,
+        lc_xml_node_wne_ns    TYPE string VALUE &apos;http://schemas.microsoft.com/office/word/2006/wordml&apos;.
 
   lo_word ?= me-&gt;ooxml_doc.
 
@@ -454,6 +503,137 @@ ENDMETHOD.</source>
   lo_document-&gt;set_encoding( lo_encoding ).
   lo_document-&gt;set_standalone( abap_true ).
 
+***********************************************************************
+* STEP 3: Create main node relationships
+  lo_element_root  = lo_document-&gt;create_simple_element( name   = lc_xml_node_document
+                                                         parent = lo_document ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:ve&apos;
+                                     value = lc_xml_node_ve_ns ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:o&apos;
+                                     value = lc_xml_node_o_ns ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:r&apos;
+                                     value = lc_xml_node_r_ns ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:m&apos;
+                                     value = lc_xml_node_m_ns ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:v&apos;
+                                     value = lc_xml_node_v_ns ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:wp&apos;
+                                     value = lc_xml_node_wp_ns ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:w10&apos;
+                                     value = lc_xml_node_w10_ns ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:w&apos;
+                                     value = lc_xml_node_w_ns ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:wne&apos;
+                                     value = lc_xml_node_wne_ns ).
+
+**********************************************************************
+* STEP 4: Create subnodes
+  &quot; body
+  lo_element_body = lo_document-&gt;create_simple_element_ns( name   = lc_xml_node_body
+                                                           prefix = lc_w_ns
+                                                           parent = lo_document ).
+  &quot; p
+  lo_element_p = lo_document-&gt;create_simple_element_ns( name   = lc_xml_node_p
+                                                        prefix = lc_w_ns
+                                                        parent = lo_document ).
+
+  lo_element_p-&gt;set_attribute_ns( name    = lc_xml_attr_rsidr
+                                  prefix  = lc_w_ns
+                                  value   = &apos;00C17603&apos; ).
+
+  lo_element_p-&gt;set_attribute_ns( name    = lc_xml_attr_rsidrdefault
+                                  prefix  = lc_w_ns
+                                  value   = &apos;00C17603&apos; ).
+
+  &quot; sectPr
+  lo_element_sectpr = lo_document-&gt;create_simple_element_ns( name   = lc_xml_node_sectpr
+                                                             prefix = lc_w_ns
+                                                             parent = lo_document ).
+
+  lo_element_p-&gt;set_attribute_ns( name    = lc_xml_attr_rsidr
+                                  prefix  = lc_w_ns
+                                  value   = &apos;00C17603&apos; ).
+
+  lo_element_p-&gt;set_attribute_ns( name    = lc_xml_attr_rsidsect
+                                  prefix  = lc_w_ns
+                                  value   = &apos;00C17603&apos; ).
+
+  &quot; pgSz
+  lo_element_pgsz = lo_document-&gt;create_simple_element_ns( name   = lc_xml_node_pgsz
+                                                           prefix = lc_w_ns
+                                                           parent = lo_document ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_w
+                                     prefix  = lc_w_ns
+                                     value   = &apos;11906&apos; ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_h
+                                     prefix  = lc_w_ns
+                                     value   = &apos;16838&apos; ).
+
+  &quot; pgMar
+  lo_element_pgmar = lo_document-&gt;create_simple_element_ns( name   = lc_xml_node_pgmar
+                                                            prefix = lc_w_ns
+                                                            parent = lo_document ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_top
+                                     prefix  = lc_w_ns
+                                     value   = &apos;1417&apos; ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_right
+                                     prefix  = lc_w_ns
+                                     value   = &apos;1134&apos; ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_bottom
+                                     prefix  = lc_w_ns
+                                     value   = &apos;1134&apos; ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_left
+                                     prefix  = lc_w_ns
+                                     value   = &apos;1134&apos; ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_header
+                                     prefix  = lc_w_ns
+                                     value   = &apos;708&apos; ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_footer
+                                     prefix  = lc_w_ns
+                                     value   = &apos;708&apos; ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_gutter
+                                     prefix  = lc_w_ns
+                                     value   = &apos;0&apos; ).
+
+  &quot; cols
+  lo_element_cols = lo_document-&gt;create_simple_element_ns( name   = lc_xml_node_cols
+                                                           prefix = lc_w_ns
+                                                           parent = lo_document ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_space
+                                     prefix  = lc_w_ns
+                                     value   = &apos;708&apos; ).
+
+  &quot; docGrid
+  lo_element_docgrid = lo_document-&gt;create_simple_element_ns( name   = lc_xml_node_docgrid
+                                                              prefix = lc_w_ns
+                                                              parent = lo_document ).
+
+  lo_element_pgsz-&gt;set_attribute_ns( name    = lc_xml_attr_linepitch
+                                     prefix  = lc_w_ns
+                                     value   = &apos;360&apos; ).
+
+
+  lo_element_sectpr-&gt;append_child( new_child = lo_element_pgsz ). &quot; pgSz node
+  lo_element_sectpr-&gt;append_child( new_child = lo_element_pgmar ). &quot; pgMar node
+  lo_element_sectpr-&gt;append_child( new_child = lo_element_cols ). &quot; cols node
+  lo_element_sectpr-&gt;append_child( new_child = lo_element_docgrid ). &quot; docGrid node
+
+  lo_element_p-&gt;append_child( new_child = lo_element_sectpr ). &quot; p node
+
+  lo_element_body-&gt;append_child( new_child = lo_element_p ). &quot; body node
+
+  lo_element_root-&gt;append_child( new_child = lo_element_body ). &quot; TitlesOfParts
+
 **********************************************************************
 * STEP 3: Create xstring stream
   CLEAR ep_content.
@@ -463,7 +643,7 @@ ENDMETHOD.</source>
   lo_renderer = lo_ixml-&gt;create_renderer( ostream  = lo_ostream document = lo_document ).
   lo_renderer-&gt;render( ).
 
-endmethod.</source>
+ENDMETHOD.</source>
  </method>
  <method CLSNAME="/CEX/CL_WORD_WRITER" CMPNAME="CREATE_WORD_FONTTABLE" VERSION="1" LANGU="E" DESCRIPT="Create &apos;word/fontTable.xml&apos;" EXPOSURE="1" STATE="1" EDITORDER="2 " DISPID="0 " MTDTYPE="0" MTDDECLTYP="0" BCMTDCAT="00" BCMTDSYN="0">
   <parameter CLSNAME="/CEX/CL_WORD_WRITER" CMPNAME="CREATE_WORD_FONTTABLE" SCONAME="EP_CONTENT" VERSION="1" LANGU="E" CMPTYPE="1" MTDTYPE="0" EDITORDER="1 " DISPID="0 " PARDECLTYP="3" PARPASSTYP="0" TYPTYPE="1" TYPE="XSTRING"/>
