@@ -635,7 +635,7 @@ ENDMETHOD.</source>
   lo_element_root-&gt;append_child( new_child = lo_element_body ). &quot; TitlesOfParts
 
 **********************************************************************
-* STEP 3: Create xstring stream
+* STEP 5: Create xstring stream
   CLEAR ep_content.
   lo_ixml = cl_ixml=&gt;create( ).
   lo_streamfactory = lo_ixml-&gt;create_stream_factory( ).
@@ -893,19 +893,29 @@ endmethod.</source>
  </method>
  <method CLSNAME="/CEX/CL_WORD_WRITER" CMPNAME="CREATE_WORD_WEBSETTINGS" VERSION="1" LANGU="E" DESCRIPT="Create &apos;word/webSettings.xml&apos;" EXPOSURE="1" STATE="1" EDITORDER="8 " DISPID="0 " MTDTYPE="0" MTDDECLTYP="0" BCMTDCAT="00" BCMTDSYN="0">
   <parameter CLSNAME="/CEX/CL_WORD_WRITER" CMPNAME="CREATE_WORD_WEBSETTINGS" SCONAME="EP_CONTENT" VERSION="1" LANGU="E" CMPTYPE="1" MTDTYPE="0" EDITORDER="1 " DISPID="0 " PARDECLTYP="3" PARPASSTYP="0" TYPTYPE="1" TYPE="XSTRING"/>
-  <source>method CREATE_WORD_WEBSETTINGS.
+  <source>METHOD create_word_websettings.
 
   DATA: lo_word           TYPE REF TO /cex/cl_word,
         lo_ixml           TYPE REF TO if_ixml,
         lo_document       TYPE REF TO if_ixml_document,
         lo_document_xml   TYPE REF TO cl_xml_document,
-        lo_element_root   TYPE REF TO if_ixml_node,
+        lo_element_root   TYPE REF TO if_ixml_element,
         lo_element        TYPE REF TO if_ixml_element,
         lo_node           TYPE REF TO if_ixml_node,
         lo_encoding       TYPE REF TO if_ixml_encoding,
         lo_streamfactory  TYPE REF TO if_ixml_stream_factory,
         lo_ostream        TYPE REF TO if_ixml_ostream,
         lo_renderer       TYPE REF TO if_ixml_renderer.
+
+
+  DATA: lc_xml_node_websettings        TYPE string VALUE &apos;webSettings&apos;,
+        lc_xml_node_optimizeforbrowser TYPE string VALUE &apos;optimizeForBrowser&apos;,
+        &quot; Namespace prefix
+        lc_r_ns                        TYPE string VALUE &apos;r&apos;,
+        lc_w_ns                        TYPE string VALUE &apos;w&apos;,
+        &quot; Node namespace
+        lc_xml_node_r_ns               TYPE string VALUE &apos;http://schemas.openxmlformats.org/officeDocument/2006/relationships&apos;,
+        lc_xml_node_w_ns               TYPE string VALUE &apos;http://schemas.openxmlformats.org/wordprocessingml/2006/main&apos;.
 
   lo_word ?= me-&gt;ooxml_doc.
 
@@ -921,8 +931,28 @@ endmethod.</source>
   lo_document-&gt;set_encoding( lo_encoding ).
   lo_document-&gt;set_standalone( abap_true ).
 
+***********************************************************************
+* STEP 3: Create main node relationships
+  lo_element_root  = lo_document-&gt;create_simple_element_ns( name    = lc_xml_node_websettings
+                                                            prefix  = lc_w_ns
+                                                            parent  = lo_document ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:r&apos;
+                                     value = lc_xml_node_r_ns ).
+  lo_element_root-&gt;set_attribute_ns( name  = &apos;xmlns:w&apos;
+                                     value = lc_xml_node_w_ns ).
+
 **********************************************************************
-* STEP 3: Create xstring stream
+* STEP 4: Create subnodes
+  &quot; body
+  lo_element = lo_document-&gt;create_simple_element_ns( name   = lc_xml_node_optimizeforbrowser
+                                                      prefix = lc_w_ns
+                                                      parent = lo_document ).
+
+  lo_element_root-&gt;append_child( new_child = lo_element ). &quot; optimizeForBrowser
+
+
+**********************************************************************
+* STEP 5: Create xstring stream
   CLEAR ep_content.
   lo_ixml = cl_ixml=&gt;create( ).
   lo_streamfactory = lo_ixml-&gt;create_stream_factory( ).
@@ -930,6 +960,6 @@ endmethod.</source>
   lo_renderer = lo_ixml-&gt;create_renderer( ostream  = lo_ostream document = lo_document ).
   lo_renderer-&gt;render( ).
 
-endmethod.</source>
+ENDMETHOD.</source>
  </method>
 </CLAS>
